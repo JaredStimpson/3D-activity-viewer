@@ -10,6 +10,7 @@ Waypoint is a Windows desktop application for turning GPX activities into local,
 
 ## Work on Waypoint
 
+- [Project vault](../vault.md) — current working memory, invariants, workflows, and change ledger; read this first
 - [Development guide](development.md) — development environment, commands, checks, and repository layout
 - [Architecture](architecture.md) — boundaries between activity parsing, project state, preview, and rendering
 - [Project format](project-format.md) — durable JSON project model
