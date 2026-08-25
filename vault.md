@@ -30,6 +30,7 @@ Core product rules:
 - Maps, thumbnails, temporary frames, and render caches must be regeneratable.
 - Project state, geographic assets, temporary render data, and final exports remain separate.
 - The renderer never downloads geographic data directly; the future Asset Manager supplies local asset handles.
+- PMTiles is a tile archive, not the source of 3D. Real terrain requires a compatible DEM; use separate basemap and terrain sources behind one installed-region handle.
 - The application should automate creative decisions and hide GPX, map-tile, camera-curve, and FFmpeg complexity from users.
 
 ## Current baseline
@@ -73,7 +74,7 @@ Not implemented yet:
 | `tools/render-activity/` | Minimal command-line technical proof |
 | `scripts/` | Windows setup, launch, development, and verification flows |
 | `sample-data/` | Synthetic non-personal GPX fixture |
-| `docs/` | User and engineering documentation |
+| `docs/` | User and engineering documentation, including the canonical activity/geographic data requirements report |
 
 Architectural dependency direction:
 
@@ -100,6 +101,7 @@ Keep core crates independent of Tauri and React so they remain reusable by the G
 - The procedural surface is a proof, not the final offline map implementation.
 - Camera work should be smooth, deterministic from evaluated time, and independent of noisy instantaneous GPS heading.
 - When MapLibre arrives, preserve a strict boundary between scene decisions and rendering mechanics.
+- Keep activity elevation distinct from the surrounding DEM: track elevation supports route altitude and statistics, while DEM tiles create the geographic terrain mesh.
 
 ### Export
 
@@ -193,6 +195,13 @@ Follow the plan's quality priority instead of expanding the editor shell first:
 Re-evaluate this order if the user explicitly chooses a different milestone.
 
 ## Change ledger
+
+### 2026-08-25 — Activity and geographic data requirements report
+
+- Added the canonical report covering required activity fields, derived data, offline basemap, DEM, style, media, and runtime dependencies.
+- Established that real 3D terrain comes from a MapLibre `raster-dem` mesh, not from PMTiles itself or the route's recorded elevation.
+- Recommended separate basemap and terrain archives grouped behind one Asset Manager region handle and documented the current procedural-terrain limitation.
+- Verified all local documentation links and a whitespace-clean Git diff.
 
 ### 2026-08-25 — User-local pnpm setup fix
 

@@ -23,5 +23,4 @@ The React layer owns editor interaction only. Rust owns source parsing, filesyst
 
 ## Current boundary
 
-The technical proof uses a deterministic procedural terrain surface so it is fully local and carries no map-provider dependency. The next renderer milestone replaces that surface with MapLibre backed by installed PMTiles and terrain archives. The Asset Manager will supply local asset handles; the renderer will never download geography directly.
-
+The technical proof uses a deterministic procedural terrain surface so it is fully local and carries no map-provider dependency. The next renderer milestone replaces that surface with MapLibre backed by installed PMTiles and terrain archives. The Asset Manager will supply local asset handles; the renderer will never download geography directly. See [Activity and geographic data requirements](data-requirements.md) for the boundary between the activity, basemap, DEM terrain, style assets, and renderer.
