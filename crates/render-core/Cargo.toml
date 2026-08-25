@@ -1,0 +1,11 @@
+[package]
+name = "render-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+activity-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+

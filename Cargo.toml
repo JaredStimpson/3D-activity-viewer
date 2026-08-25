@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+  "apps/desktop/src-tauri",
+  "crates/activity-core",
+  "crates/project-core",
+  "crates/render-core",
+  "tools/render-activity",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/JaredStimpson/3D-activity-viewer"
+
+[workspace.dependencies]
+activity-core = { path = "crates/activity-core" }
+project-core = { path = "crates/project-core" }
+render-core = { path = "crates/render-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+

@@ -1,0 +1,11 @@
+[package]
+name = "activity-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+roxmltree = "0.20"
+serde.workspace = true
+thiserror.workspace = true

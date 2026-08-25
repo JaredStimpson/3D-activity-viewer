@@ -1,0 +1,10 @@
+[package]
+name = "render-activity"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+activity-core.workspace = true
+render-core.workspace = true
+

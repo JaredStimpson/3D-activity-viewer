@@ -1,0 +1,15 @@
+{
+  "name": "activity-video-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/desktop"],
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm --filter @activity-video/desktop dev",
+    "build": "pnpm --filter @activity-video/desktop build",
+    "test": "pnpm --filter @activity-video/desktop test",
+    "tauri": "pnpm --filter @activity-video/desktop tauri",
+    "tauri:dev": "pnpm --filter @activity-video/desktop tauri:dev",
+    "tauri:build": "pnpm --filter @activity-video/desktop tauri:build"
+  }
+}
