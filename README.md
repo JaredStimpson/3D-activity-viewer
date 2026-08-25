@@ -17,6 +17,13 @@ This initial repository implements the plan's Phase 0 technical proof and lays t
 
 The terrain renderer is intentionally procedural in this proof. Real regional PMTiles/terrain archives and MapLibre integration belong to the next map-renderer and asset-manager milestones.
 
+## Quick start on Windows
+
+1. Double-click **Setup Waypoint.cmd** once.
+2. Double-click **Launch Waypoint.cmd** whenever you want to use the app.
+
+Setup checks the machine, offers to install missing prerequisites through WinGet, installs locked dependencies, and builds the native Windows executable. See the [getting started guide](docs/getting-started.md) for PowerShell and troubleshooting options.
+
 ## Requirements
 
 - Windows 11 x86-64
@@ -25,26 +32,27 @@ The terrain renderer is intentionally procedural in this proof. Real regional PM
 - FFmpeg and ffprobe available on `PATH`
 - Microsoft Edge WebView2 (included with current Windows 11 installations)
 
+## Use the app
+
+See the [user guide](docs/user-guide.md) for GPX import, preview controls, MP4 export, privacy behavior, and current limitations. The [documentation index](docs/README.md) links all user and developer references.
+
 ## Development
 
 ```powershell
-pnpm install
-pnpm tauri:dev
+.\scripts\setup.ps1 -InstallMissing -SkipBuild
+.\scripts\dev.ps1
 ```
 
 Run all checks:
 
 ```powershell
-pnpm test
-pnpm build
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
+.\scripts\verify.ps1
 ```
 
 Build the desktop executable:
 
 ```powershell
-pnpm tauri:build
+.\scripts\setup.ps1
 ```
 
 ## Command-line proof
@@ -65,6 +73,7 @@ crates/render-core/    Deterministic frames, FFmpeg pipe, ffprobe validation
 tools/render-activity/ Minimal GPX-to-MP4 proof command
 sample-data/           Synthetic sample GPX
 docs/                  Architecture and implementation notes
+scripts/               Windows setup, launch, development, and verification
 ```
 
 ## Privacy

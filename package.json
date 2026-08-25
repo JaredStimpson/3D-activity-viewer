@@ -8,6 +8,9 @@
     "dev": "pnpm --filter @activity-video/desktop dev",
     "build": "pnpm --filter @activity-video/desktop build",
     "test": "pnpm --filter @activity-video/desktop test",
+    "setup:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1",
+    "launch:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1",
+    "verify": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
     "tauri": "pnpm --filter @activity-video/desktop tauri",
     "tauri:dev": "pnpm --filter @activity-video/desktop tauri:dev",
     "tauri:build": "pnpm --filter @activity-video/desktop tauri:build"
