@@ -10,6 +10,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Set-Location -LiteralPath $RepositoryRoot
-pnpm install --frozen-lockfile
+pnpm.cmd install --frozen-lockfile
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
-pnpm tauri:dev
+pnpm.cmd tauri:dev

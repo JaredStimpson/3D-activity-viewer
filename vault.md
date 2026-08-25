@@ -118,6 +118,7 @@ Keep core crates independent of Tauri and React so they remain reusable by the G
 
 - User entry points are `Setup Waypoint.cmd` and `Launch Waypoint.cmd`.
 - `scripts/setup.ps1` may install missing prerequisites with WinGet, restores locked dependencies, and builds the release executable.
+- pnpm is installed with npm into the current user's local Waypoint tools folder; setup must not use `corepack enable` or write shims into `C:\Program Files\nodejs`.
 - `scripts/launch.ps1` starts `target/release/waypoint-desktop.exe` and can trigger first-time setup.
 - Keep `docs/getting-started.md` and `docs/troubleshooting.md` synchronized with script behavior.
 
@@ -165,7 +166,7 @@ target\release\waypoint-desktop.exe
 
 ## Verification baseline
 
-Last fully verified: 2026-08-25 after commit `ab7f9ac`.
+Last fully verified: 2026-08-25 after the user-local pnpm setup fix.
 
 - Interface: 1 Vitest test passed.
 - TypeScript and Vite production build passed.
@@ -175,6 +176,7 @@ Last fully verified: 2026-08-25 after commit `ab7f9ac`.
 - Tauri release build passed and produced the Windows executable.
 - End-to-end sample render produced a verified 24-second, 1280×720, 30 FPS H.264 MP4.
 - Setup prerequisite check and launch dry run passed.
+- The first-run pnpm recovery path passed with Node under Program Files and pnpm isolated in a user-writable tools folder; locked JavaScript and Windows-target Rust dependency restoration completed successfully.
 
 Update this section whenever validation coverage or results materially change.
 
@@ -191,6 +193,13 @@ Follow the plan's quality priority instead of expanding the editor shell first:
 Re-evaluate this order if the user explicitly chooses a different milestone.
 
 ## Change ledger
+
+### 2026-08-25 — User-local pnpm setup fix
+
+- Replaced the elevated `corepack enable` path with a user-writable npm global prefix for pnpm.
+- Setup now persists only the Waypoint tools folder in the user's PATH and supports an isolated override for testing.
+- Added recovery instructions for the prior `EPERM` failure in the protected Node.js installation folder.
+- Verified the isolated first-run dependency flow and the complete interface/Rust check suite.
 
 ### 2026-08-25 — Vault method adopted
 

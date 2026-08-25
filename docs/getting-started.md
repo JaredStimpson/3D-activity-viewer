@@ -16,7 +16,7 @@ The setup script checks for and can install:
 - Rust
 - FFmpeg and ffprobe
 - Visual Studio C++ Build Tools
-- pnpm
+- pnpm installed under the current user's local application-data folder
 
 It then installs the exact locked project dependencies and creates:
 
@@ -25,6 +25,8 @@ target\release\waypoint-desktop.exe
 ```
 
 Later launches use that executable directly and do not repeat setup.
+
+Setup does not use `corepack enable` or write package-manager shims into `C:\Program Files\nodejs`. pnpm is installed in a user-writable Waypoint tools folder, so this step does not require an additional administrator prompt.
 
 ## Setup from PowerShell
 

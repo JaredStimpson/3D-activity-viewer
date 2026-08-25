@@ -6,11 +6,11 @@ $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location -LiteralPath $RepositoryRoot
 
 Write-Host "Running interface tests..." -ForegroundColor Cyan
-pnpm test
+pnpm.cmd test
 if ($LASTEXITCODE -ne 0) { throw "Interface tests failed." }
 
 Write-Host "Building the interface..." -ForegroundColor Cyan
-pnpm build
+pnpm.cmd build
 if ($LASTEXITCODE -ne 0) { throw "Interface build failed." }
 
 Write-Host "Running Rust tests..." -ForegroundColor Cyan

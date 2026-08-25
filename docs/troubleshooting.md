@@ -32,6 +32,12 @@ You can inspect the prerequisite check without changing anything:
 .\scripts\setup.ps1 -CheckOnly
 ```
 
+## Corepack reports EPERM for `C:\Program Files\nodejs`
+
+Older versions of Waypoint setup used `corepack enable`, which could try to write package-manager shims into the protected Node.js installation folder. Pull the latest repository changes and run **Setup Waypoint.cmd** again.
+
+Current setup installs pnpm into the current user's local Waypoint tools folder and does not need permission to modify `C:\Program Files\nodejs`.
+
 ## Waypoint has not been built
 
 Run **Setup Waypoint.cmd**. A successful build produces:

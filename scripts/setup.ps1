@@ -9,6 +9,12 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $PnpmVersion = "11.19.0"
+$UsingPnpmHomeOverride = -not [string]::IsNullOrWhiteSpace($env:WAYPOINT_PNPM_HOME)
+$PnpmHome = if ($UsingPnpmHomeOverride) {
+    $env:WAYPOINT_PNPM_HOME
+} else {
+    Join-Path $env:LOCALAPPDATA "Waypoint\tools"
+}
 
 function Write-Step([string]$Message) {
     Write-Host "`n==> $Message" -ForegroundColor Cyan
@@ -17,6 +23,26 @@ function Refresh-ProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $env:Path = "$machinePath;$userPath"
+}
+
+function Add-PathEntry([string]$Path, [switch]$PersistForUser) {
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+
+    $processEntries = $env:Path -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    if ($processEntries -notcontains $Path) {
+        $env:Path = "$Path;$env:Path"
+    }
+
+    if ($PersistForUser) {
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $userEntries = $userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        if ($userEntries -notcontains $Path) {
+            $newUserPath = (@($Path) + $userEntries) -join ';'
+            [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        }
+    }
 }
 
 function Test-Command([string]$Name) {
@@ -48,6 +74,10 @@ function Install-WingetPackage([string]$Id, [string[]]$AdditionalArguments = @()
 
 if (-not $IsWindows -and $PSVersionTable.PSEdition -eq "Core") {
     throw "This setup script currently supports Windows only."
+}
+
+if (Test-Path -LiteralPath (Join-Path $PnpmHome "pnpm.cmd")) {
+    Add-PathEntry $PnpmHome -PersistForUser:(-not $UsingPnpmHomeOverride)
 }
 
 Write-Step "Checking Windows build prerequisites"
@@ -98,20 +128,26 @@ if ($nodeMajor -lt 20) {
     throw "Waypoint needs Node.js 20 or newer. The installed version is $(& node --version)."
 }
 
-if (-not (Test-Command "pnpm")) {
-    if (-not (Test-Command "corepack")) {
-        throw "Corepack was not found. Reinstall the current Node.js LTS release, then run setup again."
+if (-not (Test-Command "pnpm.cmd")) {
+    if ($CheckOnly) {
+        Write-Host "Missing: pnpm $PnpmVersion" -ForegroundColor Yellow
+        exit 1
     }
-    Write-Step "Activating pnpm $PnpmVersion"
-    & corepack enable
-    if ($LASTEXITCODE -ne 0) { throw "Corepack could not enable pnpm." }
-    & corepack prepare "pnpm@$PnpmVersion" --activate
-    if ($LASTEXITCODE -ne 0) { throw "Corepack could not activate pnpm $PnpmVersion." }
-    Refresh-ProcessPath
+    if (-not (Test-Command "npm.cmd")) {
+        throw "npm was not found with Node.js. Reinstall the current Node.js LTS release, then run setup again."
+    }
+    Write-Step "Installing pnpm $PnpmVersion for the current user"
+    New-Item -ItemType Directory -Path $PnpmHome -Force | Out-Null
+    & npm.cmd install --global "pnpm@$PnpmVersion" --prefix $PnpmHome
+    if ($LASTEXITCODE -ne 0) { throw "npm could not install pnpm $PnpmVersion for the current user." }
+    Add-PathEntry $PnpmHome -PersistForUser:(-not $UsingPnpmHomeOverride)
+    if (-not (Test-Command "pnpm.cmd")) {
+        throw "pnpm was installed but its launcher was not found in $PnpmHome."
+    }
 }
 
 Write-Host "Node:    $(& node --version)" -ForegroundColor Green
-Write-Host "pnpm:    $(& pnpm --version)" -ForegroundColor Green
+Write-Host "pnpm:    $(& pnpm.cmd --version)" -ForegroundColor Green
 Write-Host "Rust:    $(& rustc --version)" -ForegroundColor Green
 Write-Host "FFmpeg:  $((& ffmpeg -version | Select-Object -First 1) -replace '^ffmpeg version ', '')" -ForegroundColor Green
 Write-Host "MSVC:    installed" -ForegroundColor Green
@@ -123,16 +159,16 @@ if ($CheckOnly) {
 
 Set-Location -LiteralPath $RepositoryRoot
 Write-Step "Installing locked project dependencies"
-& pnpm install --frozen-lockfile
+& pnpm.cmd install --frozen-lockfile
 if ($LASTEXITCODE -ne 0) { throw "JavaScript dependency installation failed." }
 
 Write-Step "Preparing Rust dependencies"
-& cargo fetch --locked
+& cargo fetch --locked --target x86_64-pc-windows-msvc
 if ($LASTEXITCODE -ne 0) { throw "Rust dependency preparation failed." }
 
 if (-not $SkipBuild) {
     Write-Step "Building the Waypoint Windows application"
-    & pnpm tauri:build
+    & pnpm.cmd tauri:build
     if ($LASTEXITCODE -ne 0) { throw "Waypoint build failed." }
 
     $executable = Join-Path $RepositoryRoot "target\release\waypoint-desktop.exe"
