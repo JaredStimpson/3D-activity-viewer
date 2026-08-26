@@ -4,7 +4,8 @@ cd /d "%~dp0"
 
 echo Waypoint setup
 echo ==============
-echo This will check prerequisites, install missing tools with WinGet, and build Waypoint.
+echo This checks prerequisites, installs missing tools with WinGet, and restores dependencies.
+echo It does not build release executables.
 echo.
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\setup.ps1" -InstallMissing
@@ -16,5 +17,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Setup complete. You can now double-click "Launch Waypoint.cmd".
+echo Setup complete. Use a "Run ... from Source" launcher, or build a distribution.
 pause

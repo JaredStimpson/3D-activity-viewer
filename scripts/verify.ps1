@@ -8,10 +8,14 @@ Set-Location -LiteralPath $RepositoryRoot
 Write-Host "Running interface tests..." -ForegroundColor Cyan
 pnpm.cmd test
 if ($LASTEXITCODE -ne 0) { throw "Interface tests failed." }
+pnpm.cmd --filter @activity-video/map-downloader test
+if ($LASTEXITCODE -ne 0) { throw "Map downloader interface tests failed." }
 
 Write-Host "Building the interface..." -ForegroundColor Cyan
 pnpm.cmd build
 if ($LASTEXITCODE -ne 0) { throw "Interface build failed." }
+pnpm.cmd build:maps
+if ($LASTEXITCODE -ne 0) { throw "Map downloader interface build failed." }
 
 Write-Host "Running Rust tests..." -ForegroundColor Cyan
 cargo test --workspace --locked

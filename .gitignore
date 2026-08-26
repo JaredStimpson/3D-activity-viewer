@@ -8,4 +8,6 @@ target/
 apps/desktop/src-tauri/gen/
 ActivityVideoData/
 *.mp4
-
+maps/regions/*
+!maps/regions/.gitkeep
+maps/**/*.part

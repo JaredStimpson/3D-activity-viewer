@@ -12,9 +12,12 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
     "@tauri-apps/api": "^2.8.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "lucide-react": "^0.468.0",
+    "maplibre-gl": "^6.6.0",
+    "pmtiles": "^4.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -28,4 +31,3 @@
     "vitest": "^2.1.8"
   }
 }
-

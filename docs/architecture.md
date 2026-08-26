@@ -1,26 +1,25 @@
 # Architecture
 
-Waypoint separates activity understanding, project state, scene evaluation, and rendering so each part can evolve independently.
+Waypoint separates map acquisition from rendering. The main application never downloads geographic data.
 
 ```text
-GPX source
-   │
-   ▼
-activity-core ── normalized points, statistics, distance progress
-   │
-   ├────────────► React preview (interactive)
-   │
-   └────────────► render-core (deterministic frames)
-                         │
-                         ▼
-                      FFmpeg
-                         │
-                         ▼
-                  verified local MP4
+bounds -> Map Downloader -> map-assets -> maps/regions/<region-id>
+                                             │
+GPX -> activity-core -> shared scene evaluator
+                            │                │
+                            └────── MapLibre preview/export
+                                             │ raw RGBA binary IPC
+                                             v
+                                      render-core / FFmpeg
+                                             │
+                                             v
+                                      verified local MP4
 ```
 
-The React layer owns editor interaction only. Rust owns source parsing, filesystem operations, project durability, and final render orchestration. Preview and export both evaluate progress by cumulative physical route distance.
+`map-assets` is shared by both Tauri applications. It owns bounding-box validation, deterministic region IDs, provider version resolution, PMTiles creation and validation, manifests, coverage selection, safe byte ranges, hashing, cancellation, and atomic region installation.
 
-## Current boundary
+The main app asks Rust for the smallest verified region that fully covers the activity. The frontend receives only a manifest and region ID. PMTiles requests specify that validated ID, an asset kind, offset, and length; arbitrary frontend filesystem access is not exposed.
 
-The technical proof uses a deterministic procedural terrain surface so it is fully local and carries no map-provider dependency. The next renderer milestone replaces that surface with MapLibre backed by installed PMTiles and terrain archives. The Asset Manager will supply local asset handles; the renderer will never download geography directly. See [Activity and geographic data requirements](data-requirements.md) for the boundary between the activity, basemap, DEM terrain, style assets, and renderer.
+MapLibre uses the vector basemap for roads, land, water, labels, and building data and a Terrarium `raster-dem` archive for hillshade and raised terrain. Preview and export share `apps/desktop/src/lib/scene.ts`; wall-clock time never participates in export evaluation.
+
+Core crates remain independent of Tauri and React. `render-core` owns the checked FFmpeg frame session, temporary output, final verification, and atomic publication.

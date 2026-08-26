@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waypoint.local/schemas/region-manifest-v1.json",
+  "title": "Waypoint map region manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "id", "name", "bounds", "basemap", "terrain", "createdAt", "verifiedAt"],
+  "properties": {
+    "formatVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-[a-f0-9]{8}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "bounds": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "minimum": -180, "maximum": 180 },
+        { "type": "number", "minimum": -85.05112878, "maximum": 85.05112878 },
+        { "type": "number", "minimum": -180, "maximum": 180 },
+        { "type": "number", "minimum": -85.05112878, "maximum": 85.05112878 }
+      ],
+      "items": false
+    },
+    "basemap": { "$ref": "#/$defs/asset" },
+    "terrain": { "$ref": "#/$defs/asset" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "verifiedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "provider", "datasetVersion", "sourceUrl", "tileType", "minZoom", "maxZoom", "sizeBytes", "sha256", "attribution", "license"],
+      "properties": {
+        "file": { "enum": ["basemap.pmtiles", "terrain.pmtiles"] },
+        "provider": { "type": "string" },
+        "datasetVersion": { "type": "string" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "tileType": { "type": "string" },
+        "terrainEncoding": { "enum": ["terrarium", null] },
+        "minZoom": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "maxZoom": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "sizeBytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "attribution": { "type": "string" },
+        "license": { "type": "string" }
+      }
+    }
+  }
+}

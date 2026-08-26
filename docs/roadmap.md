@@ -1,6 +1,6 @@
 # Roadmap
 
-## 0.1 — Technical proof (current)
+## 0.1 — Technical proof (complete)
 
 - Tauri desktop shell
 - GPX parsing and statistics
@@ -9,19 +9,19 @@
 - deterministic FFmpeg MP4 renderer
 - project-file foundation
 
-## 0.2 — Activity and map renderer
+## 0.2 — Activity and map renderer (in progress)
 
-- track validation, jump removal, smoothing, resampling, and simplification
-- MapLibre scene renderer
-- progressive route layer and start/finish markers
-- initial camera planner and export parity tests
+- MapLibre scene renderer (complete)
+- progressive route layer and start/finish markers (complete)
+- deterministic preview/export scene evaluator and RGBA FFmpeg session (complete)
+- track validation, smoothing, and advanced camera planning (remaining)
 
-## 0.3 — Offline asset manager
+## 0.3 — Offline map acquisition (bounded downloader complete)
 
-- PMTiles basemap packages and terrain archives
-- route-bound coverage planning
-- resumable downloads, checksums, atomic installation, and SQLite index
-- storage and diagnostics screens
+- PMTiles basemap packages and terrain archives (complete)
+- explicit bounding-box planning and coverage selection (complete)
+- checksums and atomic installation (complete)
+- resumable downloads, deletion/relocation, SQLite index, and diagnostics (deferred)
 
 ## 0.4 — Durable projects and media
 
@@ -30,7 +30,6 @@
 
 ## 0.5 — Reliable editor and export
 
-- shared scene timeline for preview/export
+- shared scene timeline for preview/export (complete)
 - render snapshots, progress, cancellation, chunk resume, audio, and export history
 - landscape, vertical, and square release presets
-

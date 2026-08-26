@@ -1,0 +1,20 @@
+[package]
+name = "waypoint-map-downloader"
+version.workspace = true
+description = "Download offline map regions for Waypoint"
+authors = ["Jared Stimpson"]
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "waypoint_map_downloader_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+map-assets.workspace = true
+serde.workspace = true
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["rt", "time"] }

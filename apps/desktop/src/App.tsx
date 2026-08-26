@@ -25,9 +25,10 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import { RoutePreview } from "./components/RoutePreview";
+import { RoutePreview, type RoutePreviewHandle } from "./components/RoutePreview";
 import { formatDistance, formatDuration, parseGpxLocally } from "./lib/activity";
-import type { Activity as ActivityModel, AspectRatio, CameraPreset, ExportOptions, StylePreset } from "./types";
+import { timelineProgress } from "./lib/scene";
+import type { Activity as ActivityModel, AspectRatio, CameraPreset, ExportOptions, MapRegion, StylePreset } from "./types";
 
 const sampleActivity: ActivityModel = {
   name: "Big Sur Ridge Ride",
@@ -69,6 +70,7 @@ function isTauri() {
 export default function App() {
   const [activity, setActivity] = useState(sampleActivity);
   const [gpxSource, setGpxSource] = useState<string | null>(null);
+  const [mapRegion, setMapRegion] = useState<MapRegion | null>(null);
   const [activePanel, setActivePanel] = useState("Activity");
   const [playing, setPlaying] = useState(true);
   const [progress, setProgress] = useState(0.36);
@@ -80,7 +82,26 @@ export default function App() {
   const [exportState, setExportState] = useState<"idle" | "rendering" | "done" | "error">("idle");
   const [message, setMessage] = useState("All processing stays on this computer");
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<RoutePreviewHandle>(null);
   const lastFrame = useRef(performance.now());
+
+  async function refreshMapRegion(targetActivity = activity) {
+    if (!isTauri()) return;
+    try {
+      const region = await invoke<MapRegion | null>("find_map_region", { bounds: targetActivity.stats.bounds });
+      setMapRegion(region);
+      setMessage(region
+        ? `Using verified local map region: ${region.name}`
+        : `Map data required for ${targetActivity.stats.bounds.join(",")}. Open Waypoint Map Downloader, then refresh Map data.`);
+    } catch (error) {
+      setMapRegion(null);
+      setMessage(`Could not scan local maps: ${String(error)}`);
+    }
+  }
+
+  useEffect(() => {
+    void refreshMapRegion(activity);
+  }, [activity]);
 
   useEffect(() => {
     if (!playing) return;
@@ -105,7 +126,7 @@ export default function App() {
       setActivity(parsed);
       setGpxSource(source);
       setProgress(0);
-      setMessage(`${file.name} imported — source file left untouched`);
+      await refreshMapRegion(parsed);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
@@ -118,6 +139,10 @@ export default function App() {
     }
     if (!gpxSource) {
       setMessage("Import a GPX file before exporting a video.");
+      return;
+    }
+    if (!mapRegion || !previewRef.current) {
+      setMessage(`Download map data covering ${activity.stats.bounds.join(",")} before exporting.`);
       return;
     }
     const dimensions: Record<AspectRatio, [number, number]> = {
@@ -133,14 +158,37 @@ export default function App() {
       width: dimensions[aspectRatio][0], height: dimensions[aspectRatio][1], fps: 30, durationSeconds,
     };
     setExportState("rendering");
-    setMessage("Rendering deterministic frames with FFmpeg…");
+    setMessage("Rendering the offline MapLibre scene with FFmpeg…");
+    let sessionId: string | null = null;
     try {
-      await invoke("render_gpx", { source: gpxSource, outputPath: destination, options });
+      sessionId = await invoke<string>("begin_map_render", { outputPath: destination, options });
+      const frameCount = options.fps * options.durationSeconds;
+      for (let frame = 0; frame < frameCount; frame += 1) {
+        const frameBytes = await previewRef.current.captureFrame(
+          timelineProgress(frame, options.fps, options.durationSeconds),
+          options.width,
+          options.height,
+        );
+        await invoke("write_map_frame", frameBytes, {
+          headers: {
+            "x-waypoint-render-session": sessionId,
+            "x-waypoint-frame-number": String(frame),
+          },
+        });
+        if (frame % options.fps === 0) {
+          setMessage(`Rendering frame ${frame + 1} of ${frameCount}…`);
+        }
+      }
+      const result = await invoke<string>("finish_map_render", { sessionId });
+      sessionId = null;
       setExportState("done");
-      setMessage(`Export complete: ${destination}`);
+      setMessage(`Export complete: ${result}`);
     } catch (error) {
+      if (sessionId) await invoke("cancel_map_render", { sessionId }).catch(() => undefined);
       setExportState("error");
       setMessage(String(error));
+    } finally {
+      previewRef.current?.disposeExport();
     }
   }
 
@@ -174,13 +222,13 @@ export default function App() {
           </button>
         ))}
         <div className="sidebar-spacer" />
-        <button className="side-item"><HardDrive size={17} /><span>Map data</span></button>
+        <button className="side-item" onClick={() => void refreshMapRegion()}><HardDrive size={17} /><span>Refresh map data</span></button>
         <button className="side-item"><FolderOpen size={17} /><span>Projects</span></button>
       </aside>
 
       <section className="workspace">
         <div className={`preview-frame ratio-${aspectRatio.replace(":", "-")}`}>
-          <RoutePreview activity={activity} progress={progress} stylePreset={stylePreset} cameraPreset={cameraPreset} terrainExaggeration={terrainExaggeration} />
+          <RoutePreview ref={previewRef} activity={activity} region={mapRegion} progress={progress} stylePreset={stylePreset} cameraPreset={cameraPreset} terrainExaggeration={terrainExaggeration} />
           <div className="preview-wash" />
           <div className="preview-title"><span>RIDGE SERIES 01</span><strong>{activity.name}</strong><small>California Central Coast</small></div>
           <div className="preview-stats">
@@ -188,7 +236,7 @@ export default function App() {
             <div><strong>{Math.round(activity.stats.elevationGainMeters).toLocaleString()} m</strong><span>ELEVATION</span></div>
             <div><strong>{formatDuration(activity.stats.durationSeconds)}</strong><span>TIME</span></div>
           </div>
-          <span className="preview-mode"><Layers3 size={12} /> LOCAL TERRAIN</span>
+          <span className="preview-mode"><Layers3 size={12} /> {mapRegion ? "OFFLINE PMTILES" : "MAP DATA NEEDED"}</span>
         </div>
         <div className="transport">
           <button className="play-button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause" : "Play"}>
@@ -238,7 +286,7 @@ export default function App() {
         <section className="activity-summary">
           <div><MapPin size={15} /><span>{activity.points.length} processed points</span></div>
           <div><ShieldCheck size={15} /><span>Original activity unchanged</span></div>
-          <div><CircleCheck size={15} /><span>Export readiness {gpxSource ? "complete" : "needs GPX"}</span></div>
+          <div><CircleCheck size={15} /><span>Export readiness {!gpxSource ? "needs GPX" : !mapRegion ? "needs map data" : "complete"}</span></div>
         </section>
       </aside>
 
@@ -253,4 +301,3 @@ export default function App() {
     </main>
   );
 }
-

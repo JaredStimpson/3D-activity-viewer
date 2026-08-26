@@ -15,8 +15,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 activity-core.workspace = true
+map-assets.workspace = true
 render-core.workspace = true
 serde.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
-

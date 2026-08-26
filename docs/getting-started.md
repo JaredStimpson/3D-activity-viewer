@@ -1,60 +1,54 @@
 # Getting started on Windows
 
-These instructions build and launch Waypoint from the repository. Setup is designed for Windows 11 x86-64.
+Waypoint is a Windows PC application. The main app and its focused Map Downloader companion can run directly from source during development; release executables are only created when you explicitly build a distribution.
 
-## Fastest setup
+## First-time setup
 
-1. Download or clone the repository to a normal folder such as `Documents\Waypoint`.
+1. Clone or download the repository to a normal user-writable folder.
 2. Double-click **Setup Waypoint.cmd**.
-3. Approve any Windows prompts for missing prerequisites.
-4. Leave the setup window open while it installs dependencies and compiles the application. The first build can take several minutes.
-5. When setup reports success, double-click **Launch Waypoint.cmd**.
+3. Approve Windows prompts for any missing prerequisites.
 
-The setup script checks for and can install:
+Setup checks or installs Node.js LTS, pnpm 11.19.0, Rust, Visual Studio C++ Build Tools, FFmpeg/ffprobe, and locked project dependencies. It does **not** compile release executables.
 
-- Node.js LTS
-- Rust
-- FFmpeg and ffprobe
-- Visual Studio C++ Build Tools
-- pnpm installed under the current user's local application-data folder
+pnpm is installed in a user-writable Waypoint tools folder. Setup does not use `corepack enable` or attempt to create shims in `C:\Program Files\nodejs`.
 
-It then installs the exact locked project dependencies and creates:
+## Run from source
+
+Double-click either launcher:
+
+- **Run Map Downloader from Source.cmd** — downloads an offline region into `maps\regions`.
+- **Run Waypoint from Source.cmd** — opens the main editor.
+
+Both launchers set `WAYPOINT_MAPS_DIR` to the repository's `maps` folder. Vite live-reloads React changes. Tauri performs an initial debug Rust compile, then only recompiles Rust when relevant source changes. No release build occurs.
+
+For the first activity, run Map Downloader first and enter a bounding box covering the route. See [Map Downloader](map-downloader.md).
+
+## Build and launch release executables
+
+Double-click **Build Distribution.cmd**. It runs verification and creates:
 
 ```text
 target\release\waypoint-desktop.exe
+target\release\waypoint-map-downloader.exe
 ```
 
-Later launches use that executable directly and do not repeat setup.
+After that, **Launch Waypoint.cmd** and **Launch Map Downloader.cmd** start the existing executables immediately. They never compile automatically and tell you to build when an executable is missing.
 
-Setup does not use `corepack enable` or write package-manager shims into `C:\Program Files\nodejs`. pnpm is installed in a user-writable Waypoint tools folder, so this step does not require an additional administrator prompt.
+The raw executables require WebView2 and FFmpeg on the target machine.
 
-## Setup from PowerShell
-
-Open PowerShell in the repository and run:
+## PowerShell equivalents
 
 ```powershell
 .\scripts\setup.ps1 -InstallMissing
-.\scripts\launch.ps1
+.\scripts\dev-map-downloader.ps1
+.\scripts\dev.ps1
+.\scripts\build-dist.ps1
 ```
 
-To check prerequisites without installing or building anything:
+Check prerequisites without installing or building:
 
 ```powershell
 .\scripts\setup.ps1 -CheckOnly
 ```
 
-To prepare dependencies but skip the release build:
-
-```powershell
-.\scripts\setup.ps1 -InstallMissing -SkipBuild
-```
-
-## Update an existing checkout
-
-After pulling new code, run **Setup Waypoint.cmd** again. Locked dependencies will be refreshed and the release executable will be rebuilt.
-
-## Uninstall
-
-Waypoint does not currently install a Windows service or background process. Delete the repository folder to remove the source build. Any GPX files or exported videos you selected remain in their original locations.
-
-WinGet-installed development tools are shared system tools and are not removed automatically.
+After pulling changes, rerun setup to restore locked dependencies. Rebuild only when you want updated release executables.

@@ -2,27 +2,29 @@
 
 Waypoint is a local-first Windows desktop application that turns GPX activities into animated route videos. It uses a Tauri 2 desktop shell, a React/TypeScript editor, Rust activity processing, and FFmpeg video encoding.
 
-This initial repository implements the plan's Phase 0 technical proof and lays the foundation for the later editor and offline-map phases.
+The repository now includes the technical proof plus a focused offline map downloader and repo-local MapLibre terrain renderer.
 
 ## What works now
 
 - Import a GPX file without modifying the source.
 - Parse and normalize track points in Rust.
 - Calculate distance, elevation gain/loss, bounds, and distance-based route progress.
-- Preview a stylized local terrain scene with progressive route animation.
+- Download a bounded Protomaps basemap and Mapterhorn terrain region with a companion Tauri GUI.
+- Preview the verified local PMTiles region with MapLibre terrain and progressive route animation.
 - Change map style, camera preset, terrain exaggeration, duration, and aspect ratio.
-- Render deterministic H.264 MP4 video frames through FFmpeg.
+- Render deterministic MapLibre RGBA frames to H.264 through FFmpeg binary IPC.
 - Verify rendered dimensions with ffprobe before publishing the final file.
-- Run the same render engine from the desktop app or the `render-activity` CLI.
+- Keep downloaded map archives repo-local and Git-ignored.
 
-The terrain renderer is intentionally procedural in this proof. Real regional PMTiles/terrain archives and MapLibre integration belong to the next map-renderer and asset-manager milestones.
+The `render-activity` CLI remains a procedural technical proof. The supported desktop path uses the offline MapLibre scene for both preview and export.
 
 ## Quick start on Windows
 
 1. Double-click **Setup Waypoint.cmd** once.
-2. Double-click **Launch Waypoint.cmd** whenever you want to use the app.
+2. Double-click **Run Map Downloader from Source.cmd** and download a region.
+3. Double-click **Run Waypoint from Source.cmd**.
 
-Setup checks the machine, offers to install missing prerequisites through WinGet, installs locked dependencies, and builds the native Windows executable. See the [getting started guide](docs/getting-started.md) for PowerShell and troubleshooting options.
+Setup checks the machine, offers to install missing prerequisites through WinGet, and installs locked dependencies without compiling a release. Use **Build Distribution.cmd** only when you want both release executables. See the [getting started guide](docs/getting-started.md).
 
 ## Requirements
 
@@ -39,8 +41,9 @@ See the [user guide](docs/user-guide.md) for GPX import, preview controls, MP4 e
 ## Development
 
 ```powershell
-.\scripts\setup.ps1 -InstallMissing -SkipBuild
+.\scripts\setup.ps1 -InstallMissing
 .\scripts\dev.ps1
+.\scripts\dev-map-downloader.ps1
 ```
 
 Run all checks:
@@ -49,10 +52,10 @@ Run all checks:
 .\scripts\verify.ps1
 ```
 
-Build the desktop executable:
+Verify and build both release executables:
 
 ```powershell
-.\scripts\setup.ps1
+.\scripts\build-dist.ps1
 ```
 
 ## Command-line proof
@@ -67,11 +70,14 @@ The CLI uses the same `activity-core` and `render-core` crates as the desktop ap
 
 ```text
 apps/desktop/          Tauri 2 + React desktop application
+apps/map-downloader/   Focused Tauri map downloader
 crates/activity-core/  GPX parsing, normalized activity model, statistics
+crates/map-assets/     Bounds, downloads, manifests, PMTiles, coverage selection
 crates/project-core/   Versioned project model and atomic saves
 crates/render-core/    Deterministic frames, FFmpeg pipe, ffprobe validation
 tools/render-activity/ Minimal GPX-to-MP4 proof command
 sample-data/           Synthetic sample GPX
+maps/                  Map schema/docs and ignored downloaded regions
 docs/                  Architecture and implementation notes
 scripts/               Windows setup, launch, development, and verification
 ```

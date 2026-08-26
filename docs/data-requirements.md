@@ -138,9 +138,9 @@ For each DEM tile, MapLibre decodes the elevation value represented by each pixe
 
 ### What the app does today
 
-The pre-alpha app does **not** yet read PMTiles, real map tiles, or a DEM. The interactive preview in `apps/desktop/src/components/RoutePreview.tsx` uses sine/cosine functions to create a repeatable synthetic surface. The exporter in `crates/render-core/src/lib.rs` generates a separate procedural terrain-like background.
+The supported desktop preview and export now read verified repo-local PMTiles through `map-assets`. MapLibre renders the Protomaps vector basemap and converts Mapterhorn Terrarium elevation pixels into the real terrain mesh. `apps/desktop/src/lib/scene.ts` evaluates camera and route state for both preview and export.
 
-That current surface proves camera controls, route animation, and deterministic video encoding. It does not represent the activity's real location. The MapLibre and local asset milestones will replace it with one renderer-neutral scene driven by installed basemap and DEM packages.
+The procedural Rust renderer remains only as the `render-activity` command-line technical proof. It is not used by the main desktop export path.
 
 ## Recommended offline region package
 
@@ -150,17 +150,10 @@ One installed region should be a logical bundle, even when it contains more than
 regions/<region-id>/
 ├── manifest.json
 ├── basemap.pmtiles
-├── terrain.pmtiles          # or terrain.mbtiles
-├── style.json
-├── attribution.json
-├── sprites/
-│   ├── sprite.json
-│   └── sprite.png
-└── glyphs/
-    └── <font-stack>/<range>.pbf
+└── terrain.pmtiles
 ```
 
-The initial design should use separate basemap and terrain archives. This is a design inference from the PMTiles v3 format: an archive declares one tile type for its tile payload, while the basemap and terrain usually use different tile types and decoding rules. The Asset Manager can present both files to the rest of Waypoint as one installed region.
+The implementation uses separate basemap and terrain archives because a PMTiles archive declares one tile type while vector map data and raster DEM data require different decoding. Bundled Protomaps style code and locally generated glyphs avoid separate online style, sprite, or font requests.
 
 The region manifest should record:
 
@@ -170,7 +163,7 @@ The region manifest should record:
 - source attribution and license text;
 - install status and last verification time.
 
-The renderer should receive these verified local handles from the Asset Manager. It should never decide to fetch missing map data during preview or export.
+The renderer receives a verified region ID and fixed asset kind. Rust validates the manifest and exposes bounded binary range reads; the frontend never receives an arbitrary filesystem path. The main app never fetches missing geography during preview or export.
 
 ## Other local runtime data
 
@@ -213,7 +206,7 @@ Before enabling preview or export for a real-map project, Waypoint should verify
 ## Design decisions for the next renderer milestone
 
 1. Treat PMTiles as a transport/storage container, not as the source of 3D.
-2. Use independent basemap and terrain sources behind one Asset Manager region handle.
+2. Use independent basemap and terrain sources behind one verified `map-assets` region ID.
 3. Require a real DEM for any feature labeled "real terrain" or "3D terrain."
 4. Keep recorded activity elevation for statistics and route altitude; do not stretch it into surrounding terrain.
 5. Keep map styling assets fully local so preview and export remain offline and reproducible.

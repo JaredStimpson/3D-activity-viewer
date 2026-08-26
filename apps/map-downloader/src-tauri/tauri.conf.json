@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Waypoint Map Downloader",
+  "version": "0.1.0",
+  "identifier": "com.jaredstimpson.waypoint.mapdownloader",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1430",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Waypoint Map Downloader",
+        "width": 980,
+        "height": 860,
+        "minWidth": 720,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "backgroundColor": "#0b100e"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all",
+    "icon": ["../../desktop/src-tauri/icons/icon.ico"],
+    "category": "Utility",
+    "shortDescription": "Download offline map regions for Waypoint",
+    "longDescription": "A focused companion tool for downloading repo-local basemap and 3D terrain data."
+  }
+}

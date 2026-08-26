@@ -40,11 +40,28 @@ Current setup installs pnpm into the current user's local Waypoint tools folder 
 
 ## Waypoint has not been built
 
-Run **Setup Waypoint.cmd**. A successful build produces:
+For immediate development use, run **Run Waypoint from Source.cmd**. To create both release programs, run **Build Distribution.cmd**. A successful distribution build produces:
 
 ```text
 target\release\waypoint-desktop.exe
+target\release\waypoint-map-downloader.exe
 ```
+
+The two **Launch** scripts only start existing release executables; they never compile.
+
+## Waypoint says map data is required
+
+Copy the exact `west,south,east,north` bounds shown by Waypoint into Map Downloader. Choose a rectangle with a little margin around the route, complete the download, then select **Refresh map data** in Waypoint.
+
+If a region is listed but not selected, its manifest, byte size, PMTiles header, or SHA-256 hash may not verify. Run the downloader again for that area under a new name after moving the damaged region out of `maps\regions`.
+
+## A map download is rejected before starting
+
+Check coordinate order: west longitude, south latitude, east longitude, north latitude. Antimeridian-crossing, zero-area, reversed, or overly large rectangles are not supported. Latitudes beyond Web Mercator limits are clamped to approximately ±85.05113°.
+
+## A map download fails midway
+
+Check network access and free disk space, then retry. Transient tile requests are attempted three times. Cancelling or failing removes the incomplete staging directory; completed regions are not overwritten silently.
 
 ## The application opens with a blank window
 
@@ -84,7 +101,7 @@ Waypoint intentionally does not overwrite videos. Select **Export video** again 
 
 ## Export is slow
 
-The current proof renders deterministic software-generated frames before H.264 encoding. Vertical and longer videos contain more pixel work. Keep the application open and avoid sleep mode until the export finishes.
+Waypoint renders a full local MapLibre frame and terrain tiles before each H.264 frame. Large output formats and longer videos require more GPU, CPU, and disk throughput. Keep the application open and avoid sleep mode until export finishes.
 
 ## Verify the repository
 

@@ -4,7 +4,7 @@ use std::{
     fs,
     io::Write,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Child, ChildStdin, Command, Stdio},
 };
 use thiserror::Error;
 
@@ -40,6 +40,148 @@ pub enum RenderError {
     EncodingFailed,
     #[error("ffprobe could not verify the finished video")]
     VerificationFailed,
+}
+
+pub struct FrameEncoder {
+    child: Option<Child>,
+    stdin: Option<ChildStdin>,
+    output: PathBuf,
+    temporary: PathBuf,
+    options: RenderOptions,
+    next_frame: u32,
+    completed: bool,
+}
+
+impl FrameEncoder {
+    pub fn write_rgba_frame(&mut self, frame_number: u32, bytes: &[u8]) -> Result<(), RenderError> {
+        if frame_number != self.next_frame {
+            return Err(RenderError::InvalidSettings(format!(
+                "expected frame {}, received frame {frame_number}",
+                self.next_frame
+            )));
+        }
+        let expected = self.options.width as usize * self.options.height as usize * 4;
+        if bytes.len() != expected {
+            return Err(RenderError::InvalidSettings(format!(
+                "frame contained {} bytes; expected {expected}",
+                bytes.len()
+            )));
+        }
+        self.stdin
+            .as_mut()
+            .ok_or(RenderError::EncodingFailed)?
+            .write_all(bytes)?;
+        self.next_frame += 1;
+        Ok(())
+    }
+
+    pub fn finish(mut self) -> Result<PathBuf, RenderError> {
+        let expected_frames = self.options.fps * self.options.duration_seconds;
+        if self.next_frame != expected_frames {
+            return Err(RenderError::InvalidSettings(format!(
+                "render ended after {} of {expected_frames} frames",
+                self.next_frame
+            )));
+        }
+        drop(self.stdin.take());
+        let mut child = self.child.take().ok_or(RenderError::EncodingFailed)?;
+        if !child.wait()?.success() {
+            return Err(RenderError::EncodingFailed);
+        }
+        verify_video(&self.temporary, &self.options)?;
+        fs::rename(&self.temporary, &self.output)?;
+        self.completed = true;
+        Ok(self.output.clone())
+    }
+
+    pub fn cancel(mut self) {
+        drop(self.stdin.take());
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        let _ = fs::remove_file(&self.temporary);
+        self.completed = true;
+    }
+}
+
+impl Drop for FrameEncoder {
+    fn drop(&mut self) {
+        if self.completed {
+            return;
+        }
+        drop(self.stdin.take());
+        if let Some(child) = self.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        let _ = fs::remove_file(&self.temporary);
+    }
+}
+
+pub fn begin_rgba_render(
+    output: &Path,
+    options: &RenderOptions,
+) -> Result<FrameEncoder, RenderError> {
+    validate_options(options)?;
+    if output.exists() {
+        return Err(RenderError::InvalidSettings(
+            "the destination already exists; choose a new filename".into(),
+        ));
+    }
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(parent)?;
+    }
+    let temporary = temporary_path(output);
+    if temporary.exists() {
+        fs::remove_file(&temporary)?;
+    }
+    let size = format!("{}x{}", options.width, options.height);
+    let fps = options.fps.to_string();
+    let mut child = Command::new("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "rawvideo",
+            "-pixel_format",
+            "rgba",
+            "-video_size",
+            &size,
+            "-framerate",
+            &fps,
+            "-i",
+            "-",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
+            "-pix_fmt",
+            "yuv420p",
+        ])
+        .arg(&temporary)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()
+        .map_err(RenderError::FfmpegUnavailable)?;
+    let stdin = child.stdin.take().ok_or(RenderError::EncodingFailed)?;
+    Ok(FrameEncoder {
+        child: Some(child),
+        stdin: Some(stdin),
+        output: output.to_owned(),
+        temporary,
+        options: options.clone(),
+        next_frame: 0,
+        completed: false,
+    })
 }
 
 pub fn render_activity(
@@ -133,7 +275,7 @@ pub fn timeline_progress(time: f64, duration: f64) -> f64 {
     route_window * route_window * (3.0 - 2.0 * route_window)
 }
 
-fn validate_options(options: &RenderOptions) -> Result<(), RenderError> {
+pub fn validate_options(options: &RenderOptions) -> Result<(), RenderError> {
     if options.width < 320 || options.height < 320 || options.width > 3840 || options.height > 3840
     {
         return Err(RenderError::InvalidSettings(
@@ -282,25 +424,29 @@ fn draw_disc(
 }
 
 fn verify_video(path: &Path, options: &RenderOptions) -> Result<(), RenderError> {
-    let expected = format!("{},{}", options.width, options.height);
+    let expected_frames = options.fps * options.duration_seconds;
     let output = Command::new("ffprobe")
         .args([
             "-v",
             "error",
+            "-count_frames",
             "-select_streams",
             "v:0",
             "-show_entries",
-            "stream=width,height",
+            "stream=width,height,nb_read_frames",
             "-of",
             "csv=p=0",
         ])
         .arg(path)
         .output()
         .map_err(|_| RenderError::VerificationFailed)?;
-    let actual = String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .replace('\r', "");
-    if !output.status.success() || actual != expected {
+    let actual = String::from_utf8_lossy(&output.stdout).replace('\r', "");
+    let fields = actual.trim().split(',').collect::<Vec<_>>();
+    let valid = fields.len() == 3
+        && fields[0].parse::<u32>().ok() == Some(options.width)
+        && fields[1].parse::<u32>().ok() == Some(options.height)
+        && fields[2].parse::<u32>().ok() == Some(expected_frames);
+    if !output.status.success() || !valid {
         return Err(RenderError::VerificationFailed);
     }
     Ok(())
@@ -326,5 +472,35 @@ mod tests {
             duration_seconds: 1,
         };
         assert!(validate_options(&options).is_err());
+    }
+
+    #[test]
+    #[ignore = "requires FFmpeg and ffprobe on PATH"]
+    fn encodes_and_verifies_a_raw_rgba_session() {
+        let root =
+            std::env::temp_dir().join(format!("waypoint-render-core-{}", std::process::id()));
+        if root.exists() {
+            fs::remove_dir_all(&root).unwrap();
+        }
+        fs::create_dir(&root).unwrap();
+        let output = root.join("rgba-session.mp4");
+        let options = RenderOptions {
+            width: 320,
+            height: 320,
+            fps: 2,
+            duration_seconds: 1,
+        };
+        let mut encoder = begin_rgba_render(&output, &options).unwrap();
+        let mut frame = vec![0_u8; 320 * 320 * 4];
+        for pixel in frame.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[35, 110, 72, 255]);
+        }
+        encoder.write_rgba_frame(0, &frame).unwrap();
+        for pixel in frame.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[206, 255, 79, 255]);
+        }
+        encoder.write_rgba_frame(1, &frame).unwrap();
+        assert_eq!(encoder.finish().unwrap(), output);
+        fs::remove_dir_all(&root).unwrap();
     }
 }

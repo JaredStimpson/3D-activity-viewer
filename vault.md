@@ -29,7 +29,7 @@ Core product rules:
 - Export time is `frame_number / fps`; wall-clock time must not affect rendered frames.
 - Maps, thumbnails, temporary frames, and render caches must be regeneratable.
 - Project state, geographic assets, temporary render data, and final exports remain separate.
-- The renderer never downloads geographic data directly; the future Asset Manager supplies local asset handles.
+- The renderer never downloads geographic data directly; Waypoint Map Downloader installs verified local regions and `map-assets` supplies validated region IDs/range reads.
 - PMTiles is a tile archive, not the source of 3D. Real terrain requires a compatible DEM; use separate basemap and terrain sources behind one installed-region handle.
 - The application should automate creative decisions and hide GPX, map-tile, camera-curve, and FFmpeg complexity from users.
 
@@ -42,23 +42,26 @@ Implemented:
 - Tauri 2 Windows desktop shell.
 - React and TypeScript editor interface.
 - Rust GPX parsing with duplicate removal, normalized points, bounds, distance, duration, and elevation statistics.
-- Distance-based route progress shared conceptually by preview and export.
-- Procedural local terrain preview with route animation and camera/style controls.
-- Deterministic RGB frame generation piped to FFmpeg.
-- Temporary MP4 output, H.264 encoding, ffprobe dimension verification, and no silent final-file overwrite.
+- Distance-based route progress and deterministic scene evaluation shared by preview and export.
+- Focused Waypoint Map Downloader Tauri GUI with bounding-box validation, estimates, progress, cancellation, disk reporting, and local region listing.
+- Dated Protomaps v4 and versioned Mapterhorn Terrarium PMTiles extracts through fixed zoom limits, retries, PMTiles creation, hashing, verification, and atomic installation.
+- Shared `map-assets` crate for map-root resolution, manifests, coverage selection, PMTiles validation, safe binary ranges, deterministic region IDs, and downloads.
+- Offline MapLibre preview using vector basemap, Terrarium terrain mesh, hillshade, route progress, markers, and building extrusion.
+- One deterministic TypeScript scene evaluator shared by preview and export.
+- Raw RGBA frame sessions sent through Tauri binary IPC to FFmpeg, with temporary output plus ffprobe dimension/frame-count verification.
+- Temporary MP4 output, H.264 encoding, ffprobe dimension/frame-count verification, and no silent final-file overwrite.
 - Minimal `render-activity` GPX-to-MP4 CLI using the same Rust core as the desktop app.
 - Versioned project model and atomic-save foundation; project save/open is not wired into the UI yet.
-- Windows double-click setup and launch entry points.
+- Separate Windows double-click dependency setup, incremental source launchers, explicit two-app distribution build, and non-compiling release launchers.
 - User, troubleshooting, development, architecture, project-format, rendering, and roadmap documentation.
 
 Not implemented yet:
 
-- MapLibre scene rendering or real offline map/terrain archives.
-- Asset Manager, PMTiles/MBTiles storage, coverage planning, downloads, or SQLite index.
+- Resumable map downloads, deletion/repair/relocation workflows, interactive region selection, or SQLite catalog.
 - Track jump detection, smoothing, resampling, and render simplification.
 - Durable project creation/open/autosave/recovery in the desktop UI.
 - Photo/video import, metadata extraction, matching, or media events.
-- Music, labels, privacy zones/radius, export progress, cancellation, resume, or history.
+- Music, editable labels, privacy zones/radius, export cancellation, resume, or history.
 - FIT and TCX input.
 - Installer packaging or automated release publishing.
 
@@ -68,20 +71,23 @@ Not implemented yet:
 | --- | --- |
 | `apps/desktop/src/` | React editor, local preview, import interaction, and export controls |
 | `apps/desktop/src-tauri/` | Native window, Tauri commands, permissions, and Windows app configuration |
+| `apps/map-downloader/` | Focused React/Tauri region downloader and download progress UI |
 | `crates/activity-core/` | GPX parsing, normalized activity model, distance progression, and statistics |
+| `crates/map-assets/` | Map bounds, roots, manifests, PMTiles downloads/validation/ranges, and coverage selection |
 | `crates/project-core/` | Versioned project model and atomic JSON saving |
 | `crates/render-core/` | Deterministic frame generation, FFmpeg pipe, temporary output, and ffprobe verification |
 | `tools/render-activity/` | Minimal command-line technical proof |
 | `scripts/` | Windows setup, launch, development, and verification flows |
+| `maps/` | Tracked map documentation/schema and Git-ignored downloaded regions |
 | `sample-data/` | Synthetic non-personal GPX fixture |
 | `docs/` | User and engineering documentation, including the canonical activity/geographic data requirements report |
 
 Architectural dependency direction:
 
 ```text
-desktop UI -> Tauri commands -> activity-core / project-core / render-core
-render-activity CLI ---------> activity-core / render-core
-future renderer -------------> Asset Manager handles, never direct downloads
+Map Downloader UI -> Tauri commands -> map-assets -> maps/regions
+desktop UI -------> Tauri commands -> activity-core / map-assets / render-core
+render-activity CLI ----------> activity-core / render-core (legacy procedural proof)
 ```
 
 Keep core crates independent of Tauri and React so they remain reusable by the GUI and CLI.
@@ -97,15 +103,24 @@ Keep core crates independent of Tauri and React so they remain reusable by the G
 
 ### Preview and camera
 
-- Interactive preview code currently lives in `apps/desktop/src/components/RoutePreview.tsx`.
-- The procedural surface is a proof, not the final offline map implementation.
+- MapLibre preview/rendering lives in `apps/desktop/src/components/RoutePreview.tsx`.
+- Renderer-neutral camera/route decisions live in `apps/desktop/src/lib/scene.ts` and must remain shared by preview and export.
 - Camera work should be smooth, deterministic from evaluated time, and independent of noisy instantaneous GPS heading.
-- When MapLibre arrives, preserve a strict boundary between scene decisions and rendering mechanics.
+- Preserve the strict boundary between scene decisions and MapLibre rendering mechanics.
 - Keep activity elevation distinct from the surrounding DEM: track elevation supports route altitude and statistics, while DEM tiles create the geographic terrain mesh.
+
+### Map acquisition and storage
+
+- Make bounding-box, manifest, provider, archive, coverage, verification, and range-read changes in `crates/map-assets`.
+- Keep Map Downloader focused on explicit bounds, estimates, download/cancel progress, and local region listing; do not add GPX/project/editor responsibilities to it.
+- Keep `maps/region-manifest.schema.json`, Rust manifest structs, TypeScript manifest types, and `maps/README.md` synchronized.
+- Preserve map-root precedence: `WAYPOINT_MAPS_DIR`, executable-adjacent `maps`, then working-directory `maps` for source flows.
+- Store only region IDs and relative fixed asset names. Never persist machine-specific absolute map paths or expose arbitrary frontend file reads.
+- Downloaded `maps/regions/*` content stays Git-ignored. Run the ignored live provider test explicitly after changing provider URLs or extraction behavior.
 
 ### Export
 
-- Change deterministic rendering in `crates/render-core` and document pipeline changes in `docs/rendering.md`.
+- Change deterministic scene evaluation in `apps/desktop/src/lib/scene.ts`; change FFmpeg session behavior in `crates/render-core`; keep `docs/rendering.md` synchronized.
 - Always render to a temporary file and verify before moving to the final destination.
 - Never silently overwrite an existing export.
 - Run an actual sample GPX-to-MP4 proof when changing frame generation, FFmpeg arguments, naming, or verification.
@@ -118,10 +133,11 @@ Keep core crates independent of Tauri and React so they remain reusable by the G
 
 ### Windows setup and launch
 
-- User entry points are `Setup Waypoint.cmd` and `Launch Waypoint.cmd`.
-- `scripts/setup.ps1` may install missing prerequisites with WinGet, restores locked dependencies, and builds the release executable.
+- User entry points are `Setup Waypoint.cmd`, both `Run ... from Source.cmd` files, `Build Distribution.cmd`, and both `Launch ...cmd` files.
+- `scripts/setup.ps1` may install missing prerequisites with WinGet and restores locked dependencies; it never builds release executables.
 - pnpm is installed with npm into the current user's local Waypoint tools folder; setup must not use `corepack enable` or write shims into `C:\Program Files\nodejs`.
-- `scripts/launch.ps1` starts `target/release/waypoint-desktop.exe` and can trigger first-time setup.
+- Source scripts set `WAYPOINT_MAPS_DIR=<repo>\maps` and run incremental `tauri dev` on separate Vite ports.
+- Release launch scripts only start existing executables and never trigger setup or compilation.
 - Keep `docs/getting-started.md` and `docs/troubleshooting.md` synchronized with script behavior.
 
 ### Dependencies
@@ -138,14 +154,16 @@ User setup and launch:
 
 ```powershell
 .\scripts\setup.ps1 -InstallMissing
-.\scripts\launch.ps1
+.\scripts\dev-map-downloader.ps1
+.\scripts\dev.ps1
+.\scripts\build-dist.ps1
 ```
 
 Development:
 
 ```powershell
-.\scripts\setup.ps1 -InstallMissing -SkipBuild
 .\scripts\dev.ps1
+.\scripts\dev-map-downloader.ps1
 ```
 
 Repository verification:
@@ -164,20 +182,22 @@ Release executable:
 
 ```text
 target\release\waypoint-desktop.exe
+target\release\waypoint-map-downloader.exe
 ```
 
 ## Verification baseline
 
-Last fully verified: 2026-08-25 after the user-local pnpm setup fix.
+Last fully verified: 2026-08-25 after repo-local map rendering implementation.
 
-- Interface: 1 Vitest test passed.
-- TypeScript and Vite production build passed.
-- Rust: 6 workspace tests passed.
+- Interfaces: 5 Vitest tests passed across both applications.
+- TypeScript and Vite production builds passed for both applications.
+- Rust: 12 regular workspace tests passed; 2 external smoke tests are ignored by default and passed when run explicitly.
 - Rust formatting check passed.
 - Clippy was skipped because the local Rust toolchain did not include that optional component.
-- Tauri release build passed and produced the Windows executable.
-- End-to-end sample render produced a verified 24-second, 1280×720, 30 FPS H.264 MP4.
-- Setup prerequisite check and launch dry run passed.
+- Both Tauri release builds passed and produced both Windows executables.
+- A live tiny-region Protomaps/Mapterhorn download, verification, atomic install, and cleanup passed.
+- A short raw-RGBA FFmpeg session passed dimension and exact frame-count verification and cleanup.
+- Setup prerequisite check, both release launch dry runs, and map Git-ignore checks passed.
 - The first-run pnpm recovery path passed with Node under Program Files and pnpm isolated in a user-writable tools folder; locked JavaScript and Windows-target Rust dependency restoration completed successfully.
 
 Update this section whenever validation coverage or results materially change.
@@ -187,14 +207,21 @@ Update this section whenever validation coverage or results materially change.
 Follow the plan's quality priority instead of expanding the editor shell first:
 
 1. Add track validation, impossible-jump removal, smoothing, resampling, simplification, and tests in `activity-core`.
-2. Define a renderer-neutral scene/timeline model shared by preview and export.
-3. Integrate MapLibre against a deliberately local asset interface.
-4. Build initial smooth camera planning with look-ahead and finish overview.
-5. Prove preview/export parity before starting the full Asset Manager or media matching.
+2. Improve deterministic camera planning with look-ahead, smoothing, and a finish overview.
+3. Add automated offline MapLibre pixel/render assertions around a generated PMTiles fixture.
+4. Wire durable project save/open/autosave before expanding media features.
+5. Add download resume/repair/deletion only when the simple downloader needs those workflows.
 
 Re-evaluate this order if the user explicitly chooses a different milestone.
 
 ## Change ledger
+
+### 2026-08-25 — Repo-local map downloader and offline 3D renderer
+
+- Added the focused Waypoint Map Downloader, shared `map-assets` crate, repo-local manifest format, fixed standard-quality basemap/terrain downloads, retries, cancellation, hashes, and atomic installation.
+- Replaced the supported desktop procedural preview/export with offline MapLibre, verified region selection, safe PMTiles binary ranges, a shared deterministic scene evaluator, and raw RGBA FFmpeg sessions.
+- Split dependency setup, incremental source launch, explicit distribution building, and release launch into clear double-click workflows for both applications.
+- Updated the documentation and verified both GUIs, Rust fixtures, live provider download, frame encoding, Git-ignore rules, launchers, and both release executables; changes intentionally remain uncommitted and unpushed for user review.
 
 ### 2026-08-25 — Activity and geographic data requirements report
 

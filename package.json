@@ -2,17 +2,21 @@
   "name": "activity-video-workspace",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["apps/desktop"],
+  "workspaces": ["apps/desktop", "apps/map-downloader"],
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dev": "pnpm --filter @activity-video/desktop dev",
+    "dev:maps": "pnpm --filter @activity-video/map-downloader dev",
     "build": "pnpm --filter @activity-video/desktop build",
+    "build:maps": "pnpm --filter @activity-video/map-downloader build",
     "test": "pnpm --filter @activity-video/desktop test",
     "setup:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1",
     "launch:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/launch.ps1",
     "verify": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
     "tauri": "pnpm --filter @activity-video/desktop tauri",
     "tauri:dev": "pnpm --filter @activity-video/desktop tauri:dev",
-    "tauri:build": "pnpm --filter @activity-video/desktop tauri:build"
+    "tauri:dev:maps": "pnpm --filter @activity-video/map-downloader tauri:dev",
+    "tauri:build": "pnpm --filter @activity-video/desktop tauri:build",
+    "tauri:build:maps": "pnpm --filter @activity-video/map-downloader tauri:build"
   }
 }

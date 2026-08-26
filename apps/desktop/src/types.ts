@@ -33,3 +33,28 @@ export interface ExportOptions {
   durationSeconds: number;
 }
 
+export interface MapRegionAsset {
+  file: string;
+  provider: string;
+  datasetVersion: string;
+  sourceUrl: string;
+  tileType: string;
+  terrainEncoding?: string | null;
+  minZoom: number;
+  maxZoom: number;
+  sizeBytes: number;
+  sha256: string;
+  attribution: string;
+  license: string;
+}
+
+export interface MapRegion {
+  formatVersion: number;
+  id: string;
+  name: string;
+  bounds: [number, number, number, number];
+  basemap: MapRegionAsset;
+  terrain: MapRegionAsset;
+  createdAt: string;
+  verifiedAt: string;
+}

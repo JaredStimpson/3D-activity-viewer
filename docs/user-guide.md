@@ -1,53 +1,49 @@
 # User guide
 
-## Launch the application
+## Prepare offline map data
 
-Double-click **Launch Waypoint.cmd** in the repository folder. If the release executable does not exist yet, the launcher starts first-time setup automatically.
+Waypoint renders only from local map files. Before previewing an activity, use **Waypoint Map Downloader** to install a region that fully covers it. Enter a `west,south,east,north` bounding box; the downloader shows an estimate and stores the completed package under `maps\regions`.
 
-The editor opens with a sample Big Sur route so you can explore the interface immediately. The sample is a visual demonstration; import your own GPX before exporting.
+See the [Map Downloader guide](map-downloader.md) for the exact workflow and an example.
 
 ## Import a GPX activity
 
-1. Select **Import GPX** in the upper-right corner.
+1. Launch Waypoint and select **Import GPX**.
 2. Choose a `.gpx` file containing at least two track points.
-3. Wait for the status bar to confirm that the file was imported.
+3. Watch the status bar for the imported activity and map coverage result.
 
-Waypoint reads the GPX without changing it. It calculates route distance, elevation gain and loss, duration when timestamps are available, and geographic bounds locally.
+Waypoint reads the source without changing it. Parsing, distance/elevation statistics, map discovery, preview, and export all happen locally.
+
+If no installed region covers the route, Waypoint displays the required bounds. Open Map Downloader, install a covering rectangle, and select **Refresh map data** in Waypoint. The smallest verified region that fully covers the activity is selected automatically.
 
 ## Preview the activity
 
-Use the round play/pause button below the preview to control playback. Drag the timeline scrubber to inspect a specific point.
+Use play/pause and the scrubber below the preview. The Inspector controls:
 
-The Inspector provides the controls currently available:
+- **Map style:** Outdoor, Dark, or Topographic.
+- **Camera:** Smooth Follow, Cinematic Chase, or Route Overview.
+- **Terrain:** MapLibre terrain exaggeration.
+- **Format:** landscape `16:9`, vertical `9:16`, or square `1:1`.
+- **Duration:** 20–60 seconds.
 
-- **Map style:** Outdoor, Dark, or Topographic
-- **Camera:** Smooth Follow, Cinematic Chase, or Route Overview
-- **Terrain:** adjust the procedural terrain exaggeration
-- **Format:** landscape `16:9`, vertical `9:16`, or square `1:1`
-- **Duration:** choose a video length from 20 to 60 seconds
-
-The route animation advances by cumulative physical distance rather than raw point count, which keeps movement stable across uneven GPS sampling.
+The offline MapLibre scene combines the Protomaps vector basemap, Mapterhorn Terrarium elevation mesh, hillshade, route progress, position/end markers, and building extrusion where height data exists. Route movement uses cumulative physical distance.
 
 ## Export an MP4
 
-1. Import a GPX file. The built-in sample cannot be exported by itself.
-2. Choose the format and duration.
-3. Select **Export video**.
-4. Choose a new `.mp4` filename and destination.
-5. Leave Waypoint open until the status bar reports completion.
+1. Import a GPX and confirm export readiness is complete.
+2. Choose format, duration, style, and camera.
+3. Select **Export video** and choose a new `.mp4` filename.
+4. Leave Waypoint open until completion.
 
-Waypoint creates deterministic RGB frames, streams them to FFmpeg, and writes a temporary video. It verifies the video stream and requested dimensions with ffprobe before moving the result to the final filename.
+Export renders the same MapLibre scene used by preview at `frameIndex / fps`, waits for local tiles, sends raw RGBA frames to FFmpeg, and verifies the temporary output before publishing it. Existing files are never overwritten.
 
-Existing files are never overwritten. Choose a different filename if the destination already exists.
+## Privacy
 
-## Privacy and local files
-
-- GPX parsing and video rendering happen on this computer.
-- Waypoint does not require an account.
-- The application has no analytics, cloud sync, or proprietary backend.
-- Imported GPX files are read-only inputs.
-- Your selected export stays in the destination you choose.
+- Waypoint requires no account and has no analytics or cloud sync.
+- Source GPX files are read-only inputs.
+- Downloaded map data and exported videos stay in locations on this computer.
+- The main renderer never contacts map providers; only the explicit Map Downloader performs network downloads.
 
 ## Current limitations
 
-This pre-alpha build uses deterministic procedural terrain, not real map tiles. Saved projects, offline PMTiles regions, photo/video matching, music, privacy-radius transformations, progress cancellation, and export history are planned but not implemented yet.
+This is a pre-alpha. Project save/open, media matching, music, privacy transformations, resumable map downloads, export cancellation, installers, FIT, and TCX are not complete.

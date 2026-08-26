@@ -6,6 +6,7 @@ Waypoint is a Windows desktop application for turning GPX activities into local,
 
 - [Getting started](getting-started.md) — first-time setup and launch
 - [User guide](user-guide.md) — import an activity, adjust the preview, and export an MP4
+- [Map Downloader](map-downloader.md) — choose a bounding box and install offline basemap and terrain data
 - [Troubleshooting](troubleshooting.md) — common setup, launch, GPX, and export problems
 
 ## Work on Waypoint
@@ -20,4 +21,4 @@ Waypoint is a Windows desktop application for turning GPX activities into local,
 
 ## Current release status
 
-Waypoint is pre-alpha software. The current build proves the local GPX-to-video pipeline. It does not yet include real offline map packages, photo matching, saved project reopening, or resumable exports.
+Waypoint is pre-alpha software. The current build includes repo-local PMTiles basemap/terrain downloads and offline MapLibre preview/export. It does not yet include photo matching, saved project reopening, resumable downloads, or installers.

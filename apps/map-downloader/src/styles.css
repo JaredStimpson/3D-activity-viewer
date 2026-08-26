@@ -1,0 +1,66 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e9f0eb;
+  background: #0b100e;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 720px; min-height: 100vh; background: radial-gradient(circle at 20% 0%, #18251e 0, transparent 40%), #0b100e; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .48; }
+
+.shell { width: min(960px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 50px; }
+header { display: flex; gap: 16px; align-items: center; margin-bottom: 24px; }
+header h1 { margin: 2px 0 4px; font-size: 28px; letter-spacing: -.03em; }
+header p { margin: 0; color: #91a198; }
+.brand-icon { width: 50px; height: 50px; border-radius: 15px; display: grid; place-items: center; color: #172018; background: #d5ff4f; box-shadow: 0 12px 30px #d5ff4f1e; }
+.eyebrow { color: #9eb1a5; font-size: 10px; font-weight: 800; letter-spacing: .18em; }
+.quiet-button { margin-left: auto; }
+
+.card { background: #111814e8; border: 1px solid #26332b; border-radius: 16px; padding: 22px; margin: 14px 0; box-shadow: 0 20px 60px #0003; }
+.section-title { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+.section-title > span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #3d5145; color: #d5ff4f; border-radius: 50%; font-weight: 800; }
+.section-title h2 { margin: 0; font-size: 17px; }
+.section-title p { margin: 3px 0 0; color: #819188; font-size: 13px; }
+
+label { display: grid; gap: 7px; color: #adbbb3; font-size: 12px; font-weight: 700; margin-bottom: 14px; }
+input { width: 100%; border: 1px solid #314138; border-radius: 9px; padding: 10px 11px; color: #eef5f0; background: #0b110e; outline: none; }
+input:focus { border-color: #91ad38; box-shadow: 0 0 0 3px #d5ff4f10; }
+.coordinate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.hint { color: #74847b; font-size: 12px; margin: -2px 0 16px; }
+code { color: #b7ccbe; font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 9px; padding: 10px 14px; border: 1px solid #34453b; background: #18221c; color: #e8f0ea; font-weight: 750; }
+.primary-button { background: #d5ff4f; color: #10170f; border-color: #d5ff4f; }
+.secondary-button:hover, .quiet-button:hover { background: #202e26; }
+.danger-button { border-color: #784b49; color: #ffc4be; background: #301c1a; }
+.actions { display: flex; gap: 10px; margin-top: 18px; }
+
+.quality-row, .estimate-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.quality-row > div, .estimate-grid > div { padding: 13px; border-radius: 10px; border: 1px solid #28362e; background: #0d1410; }
+.quality-row strong, .quality-row span, .estimate-grid span, .estimate-grid strong, .estimate-grid small { display: block; }
+.quality-row span, .estimate-grid span, .estimate-grid small { color: #78877e; font-size: 11px; margin-top: 3px; }
+.estimate-grid { margin-top: 10px; }
+.estimate-grid strong { font-size: 19px; color: #dff0e4; margin-top: 5px; }
+
+.progress-block { margin-top: 16px; }
+.progress-block > div { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 7px; }
+.progress-block span { color: #8a9a91; }
+progress { width: 100%; height: 8px; appearance: none; }
+progress::-webkit-progress-bar { background: #253029; border-radius: 6px; }
+progress::-webkit-progress-value { background: #d5ff4f; border-radius: 6px; }
+
+.status { display: flex; align-items: center; gap: 8px; min-height: 22px; margin-top: 16px; color: #a8b8af; font-size: 12px; }
+.status svg { color: #a9ce38; flex: 0 0 auto; }
+.status.error, .status.error svg { color: #ff9288; }
+.regions-card { margin-top: 20px; }
+.region { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #26332b; padding: 13px 2px; }
+.region div { display: grid; gap: 4px; }
+.region span, .empty { color: #84938b; font-size: 12px; }
+.empty { padding: 10px 0 2px; }
+
+@media (max-width: 760px) {
+  .coordinate-grid, .quality-row, .estimate-grid { grid-template-columns: repeat(2, 1fr); }
+}

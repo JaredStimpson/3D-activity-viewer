@@ -166,17 +166,8 @@ Write-Step "Preparing Rust dependencies"
 & cargo fetch --locked --target x86_64-pc-windows-msvc
 if ($LASTEXITCODE -ne 0) { throw "Rust dependency preparation failed." }
 
-if (-not $SkipBuild) {
-    Write-Step "Building the Waypoint Windows application"
-    & pnpm.cmd tauri:build
-    if ($LASTEXITCODE -ne 0) { throw "Waypoint build failed." }
-
-    $executable = Join-Path $RepositoryRoot "target\release\waypoint-desktop.exe"
-    if (-not (Test-Path -LiteralPath $executable)) {
-        throw "The build completed but the Waypoint executable was not found."
-    }
-    Write-Host "`nWaypoint is ready:" -ForegroundColor Green
-    Write-Host $executable
-} else {
-    Write-Host "`nDependencies are ready. The application build was skipped." -ForegroundColor Green
+if ($SkipBuild) {
+    Write-Host "The -SkipBuild switch is retained for compatibility; setup is dependency-only by default." -ForegroundColor DarkGray
 }
+Write-Host "`nDependencies are ready. No release executables were built." -ForegroundColor Green
+Write-Host "Use a source launcher for development or 'Build Distribution.cmd' for release executables."
