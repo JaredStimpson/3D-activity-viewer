@@ -63,6 +63,12 @@ Check coordinate order: west longitude, south latitude, east longitude, north la
 
 Check network access and free disk space, then retry. Transient tile requests are attempted three times. Cancelling or failing removes the incomplete staging directory; completed regions are not overwritten silently.
 
+## A map download appears stuck
+
+Select **Live diagnostics** in Map Downloader. The browser readout updates every second and shows the most recent provider probe, archive open, tile retry/progress, finalization, hash, or verification operation. The preferred address is `http://127.0.0.1:4765/`, but use the exact address displayed in the app because it chooses another local port when 4765 is occupied.
+
+Copy the last several lines when reporting a problem. Long pauses after an HTTP failure may be the configured provider timeout and retry cycle. The diagnostics server is local-only, retains at most 4,000 in-memory lines, and stops with the downloader.
+
 ## The application opens with a blank window
 
 Install current Windows updates and repair or install the Microsoft Edge WebView2 Runtime. Waypoint uses WebView2 for its embedded interface.

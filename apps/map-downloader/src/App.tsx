@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Channel, invoke } from "@tauri-apps/api/core";
-import { CheckCircle2, Download, FolderOpen, HardDrive, MapPinned, Square, XCircle } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, FolderOpen, HardDrive, MapPinned, Square, Terminal, XCircle } from "lucide-react";
 import { parseBoundsText, replaceCoordinate, type Bounds } from "./bounds";
 
 interface RegionAsset {
@@ -27,7 +27,13 @@ interface Estimate {
   availableBytes: number;
 }
 
+interface DiagnosticsInfo {
+  url: string;
+  textUrl: string;
+}
+
 type DownloadEvent =
+  | { event: "diagnostic"; data: { level: string; message: string } }
   | { event: "resolvingSources"; data: { message: string } }
   | { event: "layerStarted"; data: { layer: string; totalTiles: number } }
   | { event: "progress"; data: { layer: string; completedTiles: number; totalTiles: number; downloadedBytes: number } }
@@ -52,6 +58,7 @@ export default function App() {
   const [bounds, setBounds] = useState<Bounds>(initialBounds);
   const [boundsText, setBoundsText] = useState(initialBounds.join(","));
   const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsInfo | null>(null);
   const [regions, setRegions] = useState<RegionManifest[]>([]);
   const [status, setStatus] = useState("Enter an area to estimate its download.");
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +80,7 @@ export default function App() {
 
   useEffect(() => {
     void refreshRegions();
+    void invoke<DiagnosticsInfo>("get_diagnostics_info").then(setDiagnostics).catch((reason) => setError(String(reason)));
   }, []);
 
   async function estimateArea() {
@@ -162,8 +170,24 @@ export default function App() {
           <h1>Map Downloader</h1>
           <p>Download one offline basemap and terrain package for a rectangular area.</p>
         </div>
-        <button className="quiet-button" onClick={() => void invoke("open_maps_folder")}><FolderOpen size={16} /> Maps folder</button>
+        <div className="header-actions">
+          <button className="quiet-button" onClick={() => void invoke("open_diagnostics")}><Terminal size={16} /> Live diagnostics</button>
+          <button className="quiet-button" onClick={() => void invoke("open_maps_folder")}><FolderOpen size={16} /> Maps folder</button>
+        </div>
       </header>
+
+      <section className="card diagnostics-card">
+        <Terminal size={20} />
+        <div>
+          <strong>Downloader terminal readout</strong>
+          <p>The localhost page updates every second and shows the last backend operation, HTTP failure, retry, and verification step.</p>
+          <code>{diagnostics?.url ?? "Starting diagnostics server…"}</code>
+          {diagnostics && <small>Plain text: {diagnostics.textUrl}</small>}
+        </div>
+        <button className="secondary-button" onClick={() => void invoke("open_diagnostics")} disabled={!diagnostics}>
+          <ExternalLink size={16} /> Open readout
+        </button>
+      </section>
 
       <section className="card form-card">
         <div className="section-title"><span>1</span><div><h2>Choose an area</h2><p>WGS84 coordinates in west, south, east, north order.</p></div></div>

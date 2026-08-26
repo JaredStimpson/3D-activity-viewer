@@ -27,6 +27,19 @@ Standard quality is fixed:
 
 The downloader freezes the source versions at job start, reads only the byte ranges and tiles needed from the dated Protomaps build and intersecting Mapterhorn PMTiles archives, retries transient requests up to three times, validates the PMTiles headers, records SHA-256 hashes and licenses, then installs the manifest last. Cancelling removes incomplete `.part` data. A completed region is never silently overwritten.
 
+## Live diagnostics
+
+The downloader starts a local terminal-style diagnostics page with the application. Select **Live diagnostics** or **Open readout** to open it in the default browser.
+
+- The preferred address is `http://127.0.0.1:4765/`.
+- If that port is already occupied, the downloader tries ports 4766 through 4774 and then an available dynamic port. The exact active address is always shown in the downloader window.
+- The page refreshes once per second. Its `/logs` endpoint provides the same output as plain text.
+- Entries include elapsed timestamps, source-version probes, provider HTTP results, archive opening, tile progress and retry failures, PMTiles finalization, verification, hashing, installation, cancellation, and the final error.
+- The server listens only on the local loopback interface. It is not reachable from another computer and stops when the downloader closes.
+- Logs are held in memory, limited to the most recent 4,000 lines, and are not written to disk. Source launches also print the same entries in their terminal window.
+
+If a download appears stuck, leave the diagnostics page open and note the last line plus its elapsed timestamp. A retry can legitimately wait for the provider HTTP timeout, but the last line identifies which provider, archive, or tile operation is waiting.
+
 Each completed region is stored as:
 
 ```text

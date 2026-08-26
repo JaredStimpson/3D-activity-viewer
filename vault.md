@@ -44,6 +44,7 @@ Implemented:
 - Rust GPX parsing with duplicate removal, normalized points, bounds, distance, duration, and elevation statistics.
 - Distance-based route progress and deterministic scene evaluation shared by preview and export.
 - Focused Waypoint Map Downloader Tauri GUI with bounding-box validation, estimates, progress, cancellation, disk reporting, and local region listing.
+- Localhost-only downloader diagnostics console with an in-app address/open control, terminal mirroring, and detailed provider/archive/tile/verification events.
 - Dated Protomaps v4 and versioned Mapterhorn Terrarium PMTiles extracts through fixed zoom limits, retries, PMTiles creation, hashing, verification, and atomic installation.
 - Shared `map-assets` crate for map-root resolution, manifests, coverage selection, PMTiles validation, safe binary ranges, deterministic region IDs, and downloads.
 - Offline MapLibre preview using vector basemap, Terrarium terrain mesh, hillshade, route progress, markers, and building extrusion.
@@ -113,6 +114,7 @@ Keep core crates independent of Tauri and React so they remain reusable by the G
 
 - Make bounding-box, manifest, provider, archive, coverage, verification, and range-read changes in `crates/map-assets`.
 - Keep Map Downloader focused on explicit bounds, estimates, download/cancel progress, and local region listing; do not add GPX/project/editor responsibilities to it.
+- Preserve the downloader diagnostics server as a loopback-only, in-memory support surface. Prefer port 4765, show the actual fallback address in the UI, and never log secrets or write diagnostic history into the repository.
 - Keep `maps/region-manifest.schema.json`, Rust manifest structs, TypeScript manifest types, and `maps/README.md` synchronized.
 - Preserve map-root precedence: `WAYPOINT_MAPS_DIR`, executable-adjacent `maps`, then working-directory `maps` for source flows.
 - Store only region IDs and relative fixed asset names. Never persist machine-specific absolute map paths or expose arbitrary frontend file reads.
@@ -187,7 +189,7 @@ target\release\waypoint-map-downloader.exe
 
 ## Verification baseline
 
-Last fully verified: 2026-08-25 after repo-local map rendering implementation.
+Last fully verified: 2026-08-25 after the live downloader diagnostics change.
 
 - Interfaces: 5 Vitest tests passed across both applications.
 - TypeScript and Vite production builds passed for both applications.
@@ -199,6 +201,7 @@ Last fully verified: 2026-08-25 after repo-local map rendering implementation.
 - A short raw-RGBA FFmpeg session passed dimension and exact frame-count verification and cleanup.
 - Setup prerequisite check, both release launch dry runs, and map Git-ignore checks passed.
 - The first-run pnpm recovery path passed with Node under Program Files and pnpm isolated in a user-writable tools folder; locked JavaScript and Windows-target Rust dependency restoration completed successfully.
+- The downloader diagnostics HTTP page, `/health`, and `/logs` endpoint tests passed, including repeated complete-header routing checks after fixing split TCP request handling.
 
 Update this section whenever validation coverage or results materially change.
 
@@ -215,6 +218,12 @@ Follow the plan's quality priority instead of expanding the editor shell first:
 Re-evaluate this order if the user explicitly chooses a different milestone.
 
 ## Change ledger
+
+### 2026-08-25 — Live downloader diagnostics port
+
+- Added a loopback-only browser console, preferring `127.0.0.1:4765`, with automatic port fallback, an auto-refreshing page, and a plain-text `/logs` endpoint.
+- Mirrored detailed source probes, provider responses, archive opens, tile progress/retries, finalization, verification, hashing, cancellation, and failures to the browser and source terminal.
+- Added in-app access and troubleshooting documentation; the complete interface build/test, Rust workspace test, diagnostics endpoint test, formatting, and documentation-test suite passed. Clippy remains unavailable and was skipped by the standard verifier.
 
 ### 2026-08-25 — Repo-local map downloader and offline 3D renderer
 

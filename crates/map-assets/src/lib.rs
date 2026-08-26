@@ -233,6 +233,10 @@ fn tile_bounds(coordinate: TileCoord) -> GeoBounds {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
 pub enum DownloadEvent {
+    Diagnostic {
+        level: String,
+        message: String,
+    },
     ResolvingSources {
         message: String,
     },
@@ -348,15 +352,28 @@ where
     progress(DownloadEvent::ResolvingSources {
         message: "Finding current basemap and terrain sources…".into(),
     });
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!(
+            "Validated request '{}' for bounds {},{},{},{} (estimated {} bytes; {} bytes free).",
+            request.name,
+            request.bounds.west(),
+            request.bounds.south(),
+            request.bounds.east(),
+            request.bounds.north(),
+            estimate.total_bytes,
+            estimate.available_bytes
+        ),
+    });
     let client = Client::builder()
         .user_agent("Waypoint-Map-Downloader/0.1")
         .timeout(Duration::from_secs(45))
         .build()
         .map_err(|error| MapAssetError::Provider(error.to_string()))?;
     check_cancelled(&cancelled)?;
-    let (basemap_version, basemap_url) = resolve_basemap_source(&client).await?;
+    let (basemap_version, basemap_url) = resolve_basemap_source(&client, &progress).await?;
     check_cancelled(&cancelled)?;
-    let terrain_source = resolve_terrain_source(&client, request.bounds).await?;
+    let terrain_source = resolve_terrain_source(&client, request.bounds, &progress).await?;
     check_cancelled(&cancelled)?;
     for existing in list_regions(root)? {
         if existing.bounds == request.bounds
@@ -386,9 +403,18 @@ where
     }
     let staging = regions_root.join(format!(".{id}.download"));
     if staging.exists() {
+        progress(DownloadEvent::Diagnostic {
+            level: "warning".into(),
+            message: "Removing a stale incomplete staging directory from an earlier attempt."
+                .into(),
+        });
         fs::remove_dir_all(&staging)?;
     }
     fs::create_dir(&staging)?;
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!("Created staging directory for region {id}."),
+    });
 
     let result = async {
         let basemap_path = staging.join("basemap.pmtiles.part");
@@ -403,6 +429,10 @@ where
         .await?;
         progress(DownloadEvent::Verifying {
             layer: "basemap".into(),
+        });
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: "Validating the basemap PMTiles header.".into(),
         });
         validate_pmtiles_header(&basemap_path)?;
         let final_basemap = staging.join("basemap.pmtiles");
@@ -421,11 +451,19 @@ where
         progress(DownloadEvent::Verifying {
             layer: "terrain".into(),
         });
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: "Validating the terrain PMTiles header.".into(),
+        });
         validate_pmtiles_header(&terrain_path)?;
         let final_terrain = staging.join("terrain.pmtiles");
         fs::rename(&terrain_path, &final_terrain)?;
 
         let now = Utc::now();
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: "Calculating final archive sizes and SHA-256 hashes.".into(),
+        });
         let manifest = RegionManifest {
             format_version: MANIFEST_VERSION,
             id: id.clone(),
@@ -466,6 +504,11 @@ where
             created_at: now,
             verified_at: now,
         };
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: "Writing the region manifest and atomically installing the completed region."
+                .into(),
+        });
         write_manifest(&staging.join("manifest.json"), &manifest)?;
         fs::rename(&staging, &destination)?;
         progress(DownloadEvent::Complete {
@@ -481,16 +524,46 @@ where
     result
 }
 
-async fn resolve_basemap_source(client: &Client) -> Result<(String, String), MapAssetError> {
+async fn resolve_basemap_source<F>(
+    client: &Client,
+    progress: &F,
+) -> Result<(String, String), MapAssetError>
+where
+    F: Fn(DownloadEvent) + Send + Sync,
+{
     for days_ago in 0..8 {
         let date = Utc::now().date_naive() - chrono::Duration::days(days_ago);
         let version = date.format("%Y%m%d").to_string();
         let url = format!("https://build.protomaps.com/{version}.pmtiles");
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: format!("Probing Protomaps daily build {version}."),
+        });
         let response = client.get(&url).header(RANGE, "bytes=0-7").send().await;
-        if let Ok(response) = response {
-            if response.status().is_success() {
+        match response {
+            Ok(response) if response.status().is_success() => {
+                progress(DownloadEvent::Diagnostic {
+                    level: "info".into(),
+                    message: format!(
+                        "Selected Protomaps build {version} (HTTP {}).",
+                        response.status()
+                    ),
+                });
                 return Ok((version, url));
             }
+            Ok(response) => progress(DownloadEvent::Diagnostic {
+                level: "warning".into(),
+                message: format!(
+                    "Protomaps build {version} returned HTTP {}; trying an earlier build.",
+                    response.status()
+                ),
+            }),
+            Err(error) => progress(DownloadEvent::Diagnostic {
+                level: "warning".into(),
+                message: format!(
+                    "Protomaps build {version} probe failed: {error}; trying an earlier build."
+                ),
+            }),
         }
     }
     Err(MapAssetError::Provider(
@@ -498,10 +571,18 @@ async fn resolve_basemap_source(client: &Client) -> Result<(String, String), Map
     ))
 }
 
-async fn resolve_terrain_source(
+async fn resolve_terrain_source<F>(
     client: &Client,
     bounds: GeoBounds,
-) -> Result<ResolvedTerrainSource, MapAssetError> {
+    progress: &F,
+) -> Result<ResolvedTerrainSource, MapAssetError>
+where
+    F: Fn(DownloadEvent) + Send + Sync,
+{
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: "Requesting Mapterhorn's machine-readable terrain archive list.".into(),
+    });
     let response = client
         .get("https://download.mapterhorn.com/download_urls.json")
         .send()
@@ -509,6 +590,13 @@ async fn resolve_terrain_source(
         .map_err(|error| MapAssetError::Provider(error.to_string()))?
         .error_for_status()
         .map_err(|error| MapAssetError::Provider(error.to_string()))?;
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!(
+            "Mapterhorn archive list responded with HTTP {}.",
+            response.status()
+        ),
+    });
     let list: TerrainArchiveList = response
         .json()
         .await
@@ -532,6 +620,15 @@ async fn resolve_terrain_source(
         .max()
         .unwrap_or(12)
         .min(TERRAIN_MAX_ZOOM);
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!(
+            "Selected Mapterhorn dataset {} with {} intersecting archive(s), through zoom {}.",
+            list.version,
+            archives.len(),
+            max_zoom
+        ),
+    });
     Ok(ResolvedTerrainSource {
         version: list.version,
         max_zoom,
@@ -550,10 +647,18 @@ async fn download_basemap<F>(
 where
     F: Fn(DownloadEvent) + Send + Sync,
 {
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: "Opening the remote Protomaps PMTiles archive.".into(),
+    });
     let reader =
         AsyncPmTilesReader::new_with_cached_url(HashMapCache::default(), client.clone(), url)
             .await
             .map_err(|error| MapAssetError::Provider(error.to_string()))?;
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: "Remote Protomaps archive opened; creating the local basemap extract.".into(),
+    });
     let file = File::create(path)?;
     let mut writer = PmTilesWriter::new(TileType::Mvt)
         .min_zoom(0)
@@ -572,12 +677,17 @@ where
         layer: "basemap".into(),
         total_tiles,
     });
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!("Basemap extraction queued {total_tiles} tile coordinates."),
+    });
     let mut downloaded_bytes = 0_u64;
     let mut completed = 0_u64;
     let results = stream::iter(coordinates.into_iter().map(|coordinate| {
         let reader = &reader;
         async move {
-            let tile = retry_pmtiles_tile(reader, coordinate, cancelled).await?;
+            let tile =
+                retry_pmtiles_tile(reader, coordinate, cancelled, progress, "basemap").await?;
             Ok::<_, MapAssetError>((coordinate, tile))
         }
     }))
@@ -605,6 +715,12 @@ where
     writer
         .finalize()
         .map_err(|error| MapAssetError::InvalidArchive(error.to_string()))?;
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!(
+            "Finalized basemap extract: {completed} coordinates processed, {downloaded_bytes} tile bytes written."
+        ),
+    });
     Ok(())
 }
 
@@ -634,6 +750,10 @@ where
     let mut readers = Vec::with_capacity(source.archives.len());
     for archive in &source.archives {
         check_cancelled(cancelled)?;
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: format!("Opening Mapterhorn archive {}.", archive.name),
+        });
         let reader = AsyncPmTilesReader::new_with_cached_url(
             HashMapCache::default(),
             client.clone(),
@@ -643,6 +763,10 @@ where
         .map_err(|error| {
             MapAssetError::Provider(format!("Could not open {}: {error}", archive.name))
         })?;
+        progress(DownloadEvent::Diagnostic {
+            level: "info".into(),
+            message: format!("Opened Mapterhorn archive {}.", archive.name),
+        });
         readers.push((archive, reader));
     }
     let coordinates = tile_coordinates(bounds, source.max_zoom);
@@ -651,6 +775,10 @@ where
         layer: "terrain".into(),
         total_tiles,
     });
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!("Terrain extraction queued {total_tiles} tile coordinates."),
+    });
     let mut downloaded_bytes = 0_u64;
     let mut completed = 0_u64;
     let results = stream::iter(coordinates.into_iter().map(|coordinate| {
@@ -658,7 +786,10 @@ where
         async move {
             for (archive, reader) in readers {
                 if archive.covers_tile(coordinate) {
-                    if let Some(tile) = retry_pmtiles_tile(reader, coordinate, cancelled).await? {
+                    if let Some(tile) =
+                        retry_pmtiles_tile(reader, coordinate, cancelled, progress, "terrain")
+                            .await?
+                    {
                         return Ok::<_, MapAssetError>((coordinate, Some(tile)));
                     }
                 }
@@ -690,24 +821,46 @@ where
     writer
         .finalize()
         .map_err(|error| MapAssetError::InvalidArchive(error.to_string()))?;
+    progress(DownloadEvent::Diagnostic {
+        level: "info".into(),
+        message: format!(
+            "Finalized terrain extract: {completed} coordinates processed, {downloaded_bytes} tile bytes written."
+        ),
+    });
     Ok(())
 }
 
-async fn retry_pmtiles_tile<B, C>(
+async fn retry_pmtiles_tile<B, C, F>(
     reader: &AsyncPmTilesReader<B, C>,
     coordinate: TileCoord,
     cancelled: &AtomicBool,
+    progress: &F,
+    layer: &str,
 ) -> Result<Option<bytes::Bytes>, MapAssetError>
 where
     B: AsyncBackend + Sync + Send,
     C: DirectoryCache + Sync + Send,
+    F: Fn(DownloadEvent) + Send + Sync,
 {
     let mut last_error = None;
     for attempt in 0..3 {
         check_cancelled(cancelled)?;
         match reader.get_tile_decompressed(coordinate).await {
             Ok(tile) => return Ok(tile),
-            Err(error) => last_error = Some(error.to_string()),
+            Err(error) => {
+                let message = error.to_string();
+                progress(DownloadEvent::Diagnostic {
+                    level: "warning".into(),
+                    message: format!(
+                        "{layer} tile z{}/x{}/y{} failed on attempt {}/3: {message}",
+                        coordinate.z(),
+                        coordinate.x(),
+                        coordinate.y(),
+                        attempt + 1
+                    ),
+                });
+                last_error = Some(message);
+            }
         }
         tokio::time::sleep(Duration::from_millis(250 * (attempt + 1))).await;
     }

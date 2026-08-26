@@ -17,9 +17,15 @@ header h1 { margin: 2px 0 4px; font-size: 28px; letter-spacing: -.03em; }
 header p { margin: 0; color: #91a198; }
 .brand-icon { width: 50px; height: 50px; border-radius: 15px; display: grid; place-items: center; color: #172018; background: #d5ff4f; box-shadow: 0 12px 30px #d5ff4f1e; }
 .eyebrow { color: #9eb1a5; font-size: 10px; font-weight: 800; letter-spacing: .18em; }
-.quiet-button { margin-left: auto; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; }
 
 .card { background: #111814e8; border: 1px solid #26332b; border-radius: 16px; padding: 22px; margin: 14px 0; box-shadow: 0 20px 60px #0003; }
+.diagnostics-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-color: #43543c; background: #141d16; }
+.diagnostics-card > svg { color: #d5ff4f; }
+.diagnostics-card strong, .diagnostics-card code, .diagnostics-card small { display: block; }
+.diagnostics-card p { margin: 4px 0 8px; color: #91a198; font-size: 12px; }
+.diagnostics-card code { color: #d5ff4f; font-size: 12px; }
+.diagnostics-card small { margin-top: 4px; color: #728078; font-family: "Cascadia Code", Consolas, monospace; }
 .section-title { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
 .section-title > span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #3d5145; color: #d5ff4f; border-radius: 50%; font-weight: 800; }
 .section-title h2 { margin: 0; font-size: 17px; }
@@ -63,4 +69,7 @@ progress::-webkit-progress-value { background: #d5ff4f; border-radius: 6px; }
 
 @media (max-width: 760px) {
   .coordinate-grid, .quality-row, .estimate-grid { grid-template-columns: repeat(2, 1fr); }
+  .diagnostics-card { grid-template-columns: auto 1fr; }
+  .diagnostics-card button { grid-column: 1 / -1; }
+  .header-actions { flex-direction: column; }
 }
