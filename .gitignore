@@ -11,3 +11,4 @@ ActivityVideoData/
 maps/regions/*
 !maps/regions/.gitkeep
 maps/**/*.part
+plans/
